@@ -111,7 +111,7 @@ def exclude_words_by_pattern(unseen_words_file, rejected_words_file) -> None:
 def main():
     """Main function for sorting through word lists."""
 
-    word_type = "nouns"
+    word_type = "adjectives"
     data_dir = Path("/Users/sylvi/src/words/data")
     backup_dir = Path("/Users/sylvi/src/words/backups")
     if not data_dir.exists():
@@ -179,7 +179,7 @@ def main():
             exit(0)
         elif choice == "4":
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            backup_subdir = backup_dir / timestamp
+            backup_subdir = backup_dir / f"backup_{word_type}_{timestamp}"
             backup_subdir.mkdir(parents=True, exist_ok=True)
             for file in [unseen_words_file, accepted_words_file, rejected_words_file]:
                 backup_file = backup_subdir / file.name
@@ -188,7 +188,7 @@ def main():
                         destination_file.write(source_file.read())
             print(f"Backup saved to {backup_subdir}")
         else:
-            print("Invalid choice. Please enter 1, 2, or 3.")
+            print("Invalid choice. Please enter 1, 2, 3, or 4.")
 
 
 if __name__ == "__main__":
