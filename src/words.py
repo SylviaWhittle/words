@@ -1,5 +1,6 @@
 """Script to help manually sort through nouns, verbs, adjectives etc."""
 
+from typing import Literal
 from datetime import datetime
 import re
 import random
@@ -106,6 +107,126 @@ def exclude_words_by_pattern(unseen_words_file, rejected_words_file) -> None:
     print(f"Excluded {num_excluded} words containing the pattern '{pattern}'.")
     print(f"Remaining words in {unseen_words_file}: {len(remaining_words)}")
     return
+
+
+class WordSifter:
+    """Class to handle sifting through word lists and saving words of interest."""
+
+    def __init__(self, word_type: Literal["nouns", "adjectives", "verbs"], data_dir: Path, backup_dir: Path):
+        self.word_type = word_type
+        data_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir = data_dir
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        self.backup_dir = backup_dir
+
+        self.file_unseen = data_dir / f"unseen_{word_type}.txt"
+        self.file_accepted = data_dir / f"accepted_{word_type}.txt"
+        self.file_rejected = data_dir / f"rejected_{word_type}.txt"
+
+        self._ensure_files_exist()
+
+    def _ensure_files_exist(self):
+        if not self.file_unseen.exists():
+            nltk.download("wordnet")
+            word_type_map = {"nouns": "n", "verbs": "v", "adjectives": "a", "adverbs": "r"}
+            words = set(
+                lemma.name() for synset in wn.all_synsets(word_type_map[self.word_type]) for lemma in synset.lemmas()
+            )
+            self.file_unseen.write_text("\n".join(sorted(words)) + "\n")
+            self.file_accepted.touch()
+            self.file_rejected.touch()
+
+    def get_current_word(self) -> tuple[str, list[str], dict[str, int]]:
+        """Get the current word to process.
+
+        It will be the first line of the unseen words file
+        """
+        # Read the first line without loading the entire file into memory
+        print(f"Loading word from {self.file_unseen}")
+        with self.file_unseen.open("r") as f:
+            # Load the first line
+            word = f.readline().strip()
+        print(f"found word: [{word}]")
+        assert word, "First line of unseen words file is empty."
+
+        print(f"getting definitions for [{word}]")
+        definitions = get_definitions(word)
+        stats = self.get_stats()
+        print(f"Returning word: [{word}], definitions: [{definitions}], stats: [{stats}]")
+        return word, definitions, stats
+
+    def get_stats(self) -> dict:
+        """Get stats about the current state of the word lists."""
+        number_unseen = len(self.file_unseen.read_text().splitlines())
+        number_accepted = len(self.file_accepted.read_text().splitlines())
+        number_rejected = len(self.file_rejected.read_text().splitlines())
+        return {
+            "number_unseen": number_unseen,
+            "number_accepted": number_accepted,
+            "number_rejected": number_rejected,
+            "number_total": number_unseen + number_accepted + number_rejected,
+            "percentage_completed": (
+                round(
+                    (number_accepted + number_rejected) / (number_unseen + number_accepted + number_rejected) * 100, 2
+                )
+                if (number_unseen + number_accepted + number_rejected) > 0
+                else 0
+            ),
+        }
+
+    def remove_word_from_file(self, word: str, file_path: Path) -> None:
+        """Remove a word from a file."""
+        with open(file_path, "r") as f:
+            words = [line.strip() for line in f.readlines()]
+        if word in words:
+            words.remove(word)
+            with open(file_path, "w") as f:
+                for w in words:
+                    f.write(w + "\n")
+
+    def process_action(self, word: str, action: Literal["accept", "reject"]) -> None:
+        """Process an action from a given word."""
+        if action == "accept":
+            with self.file_accepted.open("a") as f:
+                f.write(word + "\n")
+        elif action == "reject":
+            with self.file_rejected.open("a") as f:
+                f.write(word + "\n")
+        else:
+            raise ValueError(f"Invalid action: {action}")
+
+        self.remove_word_from_file(word, self.file_unseen)
+
+    def exclude_words_by_pattern(self, pattern: str) -> int:
+        """Exclude words from the unseen words file based on a regex pattern."""
+        unseen_words = self.file_unseen.read_text().splitlines()
+        excluded_words = [w for w in unseen_words if re.search(pattern, w)]
+        num_excluded = len(excluded_words)
+
+        # Write the excluded words to the rejected words file
+        with self.file_rejected.open("a") as f:
+            for excluded_word in excluded_words:
+                f.write(excluded_word + "\n")
+
+        # Write the remaining words back to the unseen words file
+        remaining_words = [w for w in unseen_words if not re.search(pattern, w)]
+        self.file_unseen.write_text("\n".join(remaining_words) + "\n")
+
+        return num_excluded
+
+    def backup_state(self) -> Path:
+        """Save a backup of the current state of the word lists."""
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        backup_subdir = self.backup_dir / f"backup_{self.word_type}_{timestamp}"
+        backup_subdir.mkdir(parents=True, exist_ok=True)
+
+        for file in [self.file_unseen, self.file_accepted, self.file_rejected]:
+            backup_file = backup_subdir / file.name
+            with open(file, "r") as source_file:
+                with open(backup_file, "w") as destination_file:
+                    destination_file.write(source_file.read())
+
+        return backup_subdir
 
 
 def main():

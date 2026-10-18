@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="'en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Word Sifter</title>
+    <style>
+        :root {
+            --background-colour: #121212;
+            --word_card-colour: #1e1e1e;
+            --text: #e0e0e0;
+            --accept: #2d7d31;
+            --reject: #c72928; 
+        }
+        body {
+            margin: 0;
+            font-family: system-ui, serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header {
+            padding: 16px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #888888;
+            border-bottom: 1px solid #333333;
+        }
+        .word-card-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .word-card {
+            background: var(--word_card-colour);
+            border-radius: 16pt;
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .word {
+            font-size: 2rem;
+        }
+        .definitions {
+            font-size: 0.95rem;
+        }
+        .definition-entry {
+            margin-bottom: 8px;
+        }
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 20px;
+            max-width: 440px;
+            /* margin 0 auto is used to center the actions */
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+        }
+        .button-reject {
+            background: var(--reject);
+        }
+        .button-accept {
+            background: var(--accept);
+        }
+        button:active {
+            opacity: 0.8;
+            transform: scale(0.98);
+        }
+    </style>
+
+    <div class="header" id="stats">Loading stats...</div>
+    <div class="word-card-container">
+        <div class="word-card" id="card">
+            <div class="word" id="word-title">Loading...</div>
+            <div class="definitions" id="definitions">Loading definitions...</div>      
+            </div>
+        </div>
+        <div class="actions">
+            <button class="button-reject" onclick="submit_decision('reject')">Reject</button>
+            <button class="button-accept" onclick="submit_decision('accept')">Accept</button>
+        </div>
+        <button class="backup" onclick="create_backup()">Create Backup</button>
+    </div>
+    <script>
+        let current_word = "";
+        async function load_word_card() {
+            // Get the word card data from the server
+            const word_card_result = await fetch("/api/display_word")
+            // Parse the JSON response
+            const word_card_data = await word_card_result.json();
+            console.log(`Fetched word data: ${word_card_data}`)
+
+            if (!word_card_data.word) {
+                document.getElementById("word-title").innerText = "No more words to sift!";
+                document.getElementById("definitions").innerHTML = "";
+                document.getElementById("stats").innerText = "";
+                return;
+            }
+
+            current_word = word_card_data.word;
+            console.log(`Loaded word card for: ${current_word}`);
+            document.getElementById("word-title").innerText = current_word;
+            document.getElementById("definitions").innerHTML = word_card_data.definitions.map(def => `<div class="definition-entry">${def}</div>`).join("");
+
+            const stats = word_card_data.stats;
+            document.getElementById("stats").innerText = `Accepted: ${stats.number_accepted}, Rejected: ${stats.number_rejected}, Remaining: ${stats.number_unseen} | (${stats.percentage_completed}% complete)`;
+        }
+
+        async function submit_decision(decision) {
+            if (!current_word) {
+                console.error("No current word to submit decision for.");
+                return;
+            }
+            await fetch("/api/decide_word", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ word: current_word, action: decision })
+            });
+            // Load the next word card after submitting the decision
+            await load_word_card();
+        }
+
+        async function create_backup() {
+            const backup_result = await fetch("/api/backup", {
+                method: "POST"
+            });
+            const backup_data = await backup_result.json();
+            if (backup_data.success) {
+                alert("Backup created successfully!");
+            } else {
+                alert("Failed to create backup.");
+            }
+        }
+
+        // Todo: maybe add keybord binds for actions?
+
+        // Load the first word card when the page loads
+        load_word_card();
+    </script>
+</head>
+</html>
