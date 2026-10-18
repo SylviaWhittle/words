@@ -9,13 +9,12 @@
             --background-colour: #121212;
             --word_card-colour: #1e1e1e;
             --text: #e0e0e0;
-            --accept: #2d7d31;
-            --reject: #c72928; 
+            --border-colour: #cfcfcf;
         }
         body {
             margin: 0;
             font-family: system-ui, serif;
-            background: var(--bg);
+            background: var(--background-colour);
             color: var(--text);
             display: flex;
             flex-direction: column;
@@ -37,11 +36,12 @@
         }
         .word-card {
             background: var(--word_card-colour);
-            border-radius: 16pt;
+            border-radius: 2pt;
             padding: 24px;
             width: 100%;
             max-width: 400px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border-color: var(--border-colour);
+            border: 1px solid;
         }
         .word {
             font-size: 2rem;
@@ -68,15 +68,52 @@
             font-size: 1.2rem;
             font-weight: bold;
             border: none;
-            border-radius: 12px;
-            color: white;
+            border-radius: 2px;
+            color: var(--text);
             cursor: pointer;
+
+            background-image:
+            /* Solid left and right sides */
+            linear-gradient(var(--border-colour), var(--border-colour)),
+            linear-gradient(var(--border-colour), var(--border-colour)),
+
+            /* Top-left and top-right corners */
+            linear-gradient(var(--border-colour), var(--border-colour)),
+            /* linear-gradient(var(--border-colour), var(--border-colour)), */
+
+            /* Bottom-left and bottom-right corners */
+            /* linear-gradient(var(--border-colour), var(--border-colour)), */
+            linear-gradient(var(--border-colour), var(--border-colour));
+            
+            background-size: 
+                2px 100%,
+                2px 100%,
+                14px 2px,
+                14px 2px;    
+    
+            background-position:
+                left center,
+                right center,
+                top left,
+                bottom right;
+
+            background-repeat: no-repeat;
+
         }
         .button-reject {
-            background: var(--reject);
+            background-color: var(--background-colour);
         }
         .button-accept {
-            background: var(--accept);
+            background-color: var(--background-colour);
+        }
+        .backup {
+            background: #444444;
+            color: var(--text);
+            padding: 12px;
+            font-size: 0.9rem;
+            border-radius: 2px;
+            margin: 20px auto;
+            display: block;
         }
         button:active {
             opacity: 0.8;
