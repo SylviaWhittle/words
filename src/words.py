@@ -40,7 +40,7 @@ def accept_reject_words(unseen_words_file, accepted_words_file, rejected_words_f
     while True:
         # get the first word from the unseen words file
         with open(unseen_words_file, "r") as unseen_file:
-            unseen_words = [line.strip() for line in unseen_file.readlines()]
+            unseen_words = sorted([line.strip() for line in unseen_file.readlines()], key=len)
         if not unseen_words:
             print("No more unseen words to process.")
             return
@@ -113,6 +113,13 @@ class WordSifter:
     """Class to handle sifting through word lists and saving words of interest."""
 
     def __init__(self, word_type: Literal["nouns", "adjectives", "verbs"], data_dir: Path, backup_dir: Path):
+        
+        # Ensure nltk wordnet is downloaded - on nixos / devenv this needs checking each time
+        print("Checking if nltk wordnet is present")
+        try:
+            nltk.data.find('corpora/wordnet')
+        except LookupError:
+            nltk.download('wordnet', quiet=True)
         self.word_type = word_type
         data_dir.mkdir(parents=True, exist_ok=True)
         self.data_dir = data_dir
@@ -145,7 +152,8 @@ class WordSifter:
         print(f"Loading word from {self.file_unseen}")
         with self.file_unseen.open("r") as f:
             # Load the first line
-            word = f.readline().strip()
+            unseen_words = sorted([line.strip() for line in f.readlines()], key=len)
+            word = unseen_words[0]
         print(f"found word: [{word}]")
         assert word, "First line of unseen words file is empty."
 

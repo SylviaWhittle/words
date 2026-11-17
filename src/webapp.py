@@ -55,4 +55,4 @@ if __name__ == "__main__":
     sifter = WordSifter(word_type=args.word_type, data_dir=dir_data, backup_dir=dir_backup)
 
     app = create_application(sifter)
-    app.run(host="127.0.0.1", port=args.port, debug=False)
+    app.run(host="0.0.0.0", port=args.port, debug=False)
