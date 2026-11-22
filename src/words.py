@@ -46,16 +46,16 @@ def accept_reject_words(
         with open(unseen_words_file, "r") as unseen_file:
             unseen_words = sorted([line.strip() for line in unseen_file], key=len)
         if not unseen_words:
-            print("No more unseen words to process.")
+            logger.warning("No more unseen words to process.")
             return
         word = unseen_words[0]
         definitions = get_definitions(word)
-        print(f"\nWord: {word}")
+        logger.debug(f"\nWord: {word}")
         if isinstance(definitions, list):
             for definition in definitions:
-                print(definition)
+                logger.debug(definition)
         else:
-            print(definitions)
+            logger.debug(definitions)
         user_input = input("Accept this word? (y/n) (q to quit) ").strip().lower()
         if user_input == "y":
             # add the word to the accepted words file
@@ -74,10 +74,10 @@ def accept_reject_words(
             # continue to the next word
             continue
         elif user_input == "q":
-            print("Exiting accept/reject mode.")
+            logger.debug("Exiting accept/reject mode.")
             return
         else:
-            print("Invalid input. Please enter 'y' or 'n' or 'q' to quit this mode.")
+            logger.debug("Invalid input. Please enter 'y' or 'n' or 'q' to quit this mode.")
 
 
 def exclude_words_by_pattern(unseen_words_file, rejected_words_file) -> None:
@@ -85,7 +85,7 @@ def exclude_words_by_pattern(unseen_words_file, rejected_words_file) -> None:
     pattern = input(
         "Enter the pattern to exclude (e.g., 'ing' to exclude words ending with 'ing'): "
     ).strip()
-    print(
+    logger.debug(
         f"Excluding words containing the pattern '{pattern}' from {unseen_words_file}..."
     )
     with open(unseen_words_file, "r") as unseen_file:
@@ -93,15 +93,15 @@ def exclude_words_by_pattern(unseen_words_file, rejected_words_file) -> None:
     # filter out words that contain the pattern by finding words that match the regex pattern
     excluded_words = [w for w in unseen_words if re.search(pattern, w)]
     num_excluded = len(excluded_words)
-    print(f"Found {num_excluded} words containing the pattern '{pattern}'.")
-    print("Random sample of 50 excluded words:")
+    logger.debug(f"Found {num_excluded} words containing the pattern '{pattern}'.")
+    logger.debug("Random sample of 50 excluded words:")
     random_sample = random.sample(excluded_words, min(50, num_excluded))
     for word in random_sample:
-        print(f"  {word}")
-    print(f"Are you sure you want to exclude these {num_excluded} words? (y/n)")
+        logger.debug(f"  {word}")
+    logger.debug(f"Are you sure you want to exclude these {num_excluded} words? (y/n)")
     confirmation = input().strip().lower()
     if confirmation != "y":
-        print("Exclusion cancelled.")
+        logger.debug("Exclusion cancelled.")
         return
     # write the excluded words to the rejected words file
     with open(rejected_words_file, "a") as rejected_file:
@@ -114,8 +114,8 @@ def exclude_words_by_pattern(unseen_words_file, rejected_words_file) -> None:
         unseen_file.writelines(
             remaining_word + "\n" for remaining_word in remaining_words
         )
-    print(f"Excluded {num_excluded} words containing the pattern '{pattern}'.")
-    print(f"Remaining words in {unseen_words_file}: {len(remaining_words)}")
+    logger.debug(f"Excluded {num_excluded} words containing the pattern '{pattern}'.")
+    logger.debug(f"Remaining words in {unseen_words_file}: {len(remaining_words)}")
     return
 
 
@@ -131,7 +131,7 @@ class WordSifter:
     ):
 
         # Ensure nltk wordnet is downloaded - on nixos / devenv this needs checking each time
-        print("Checking if nltk wordnet is present")
+        logger.debug("Checking if nltk wordnet is present")
         try:
             nltk.data.find("corpora/wordnet")
         except LookupError:
@@ -148,7 +148,7 @@ class WordSifter:
         self.history: list[tuple[str, Literal["accept", "reject"]]] = []
         self.file_sort_type: Literal["alphabetical", "length"] = file_sort_type
 
-        print("WordSifter constructed, checking and sorting files.")
+        logger.debug("WordSifter constructed, checking and sorting files.")
 
         self._ensure_files_exist()
         self.sort_unseen_file()
@@ -197,11 +197,6 @@ class WordSifter:
         # Replace the file contents
         logger.debug(f"sorting : sorted words length: {len(words)}")
         self.write_words_to_file(words=words, file_path=self.file_unseen)
-        with self.file_unseen.open(mode="r", encoding="utf-8") as f:
-            lines = f.readlines()
-            for i in range(3):
-                line = lines[i]
-                logger.debug(f"sorting : sorted, line {i}: {line}")
 
     def get_current_word(self) -> tuple[str, list[str], dict[str, int]]:
         """
@@ -216,7 +211,7 @@ class WordSifter:
         logger.debug(f"found word: [{word}]")
         assert word, "First line of unseen words file is empty."
 
-        print(f"getting definitions for [{word}]")
+        logger.debug(f"getting definitions for [{word}]")
         definitions = get_definitions(word)
         stats = self.get_stats()
         logger.debug(
@@ -259,12 +254,6 @@ class WordSifter:
         """Append a word to a file."""
         with file_path.open("a") as f:
             f.write(word + "\n")
-        with file_path.open("r") as f:
-            lines = f.readlines()
-            logger.debug(f"last lines of file {file_path}")
-            for i in range(3):
-                line = lines[(len(lines) - 1) - i]
-                logger.debug(f"\n{line}")
 
     def write_words_to_file(self, words: list[str], file_path: Path) -> None:
         """Overwrite a file with a word list"""
@@ -369,7 +358,7 @@ def main():
     accepted_words_file = data_dir / f"accepted_{word_type}.txt"
 
     if not unseen_words_file.exists():
-        print(f"No existing word list found, downloading {word_type} from WordNet...")
+        logger.debug(f"No existing word list found, downloading {word_type} from WordNet...")
         nltk.download("wordnet")
         if word_type == "nouns":
             wordnet_word_type = "n"
@@ -386,7 +375,7 @@ def main():
             for synset in wn.all_synsets(wordnet_word_type)
             for lemma in synset.lemmas()
         }
-        print(len(all_words))
+        logger.debug(len(all_words))
         # save the nouns to a file
         with open(unseen_words_file, "w") as f:
             f.writelines(word + "\n" for word in sorted(all_words))
@@ -396,10 +385,10 @@ def main():
         with open(rejected_words_file, "w") as f:
             pass
     else:
-        print("Files already exist, using existing data.")
+        logger.debug("Files already exist, using existing data.")
 
     # iteratively read the unseen words file, get definitions, and ask the user to accept or reject each word
-    print(f"Reading unseen words from {unseen_words_file}")
+    logger.debug(f"Reading unseen words from {unseen_words_file}")
     with open(unseen_words_file, "r") as f:
         unseen_words = [line.strip() for line in f]
 
@@ -416,14 +405,14 @@ def main():
             / (num_unseen + num_accepted + num_rejected)
             * 100
         )
-        print(
+        logger.debug(
             f"Number of {word_type} remaining: {num_unseen} / {num_unseen + num_accepted + num_rejected} (Accepted: {num_accepted}, Rejected: {num_rejected}) - {percentage_completed:.2f}% completed"
         )
-        print("Select function:")
-        print("1. Accept/Reject words")
-        print("2. Exclude words by pattern")
-        print("3. Exit")
-        print("4. Save a backup of the state")
+        logger.info("Select function:")
+        logger.info("1. Accept/Reject words")
+        logger.info("2. Exclude words by pattern")
+        logger.info("3. Exit")
+        logger.info("4. Save a backup of the state")
         choice = input("Enter your choice (1/2/3/4): ").strip()
         if choice == "1":
             accept_reject_words(
@@ -432,7 +421,7 @@ def main():
         elif choice == "2":
             exclude_words_by_pattern(unseen_words_file, rejected_words_file)
         elif choice == "3":
-            print("Exiting the program.")
+            logger.info("Exiting the program.")
             sys.exit(0)
         elif choice == "4":
             timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%d_%H-%M-%S")
@@ -445,9 +434,9 @@ def main():
                     backup_file.open(mode="w", encoding="utf-8") as destination_file,
                 ):
                     destination_file.write(source_file.read())
-            print(f"Backup saved to {backup_subdir}")
+            logger.info(f"Backup saved to {backup_subdir}")
         else:
-            print("Invalid choice. Please enter 1, 2, 3, or 4.")
+            logger.info("Invalid choice. Please enter 1, 2, 3, or 4.")
 
 
 if __name__ == "__main__":
