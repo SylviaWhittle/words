@@ -63,6 +63,16 @@
             width: 100%;
             box-sizing: border-box;
         }
+        .meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 20px;
+            max-width: 440px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
         button {
             padding: 20px;
             font-size: 1.2rem;
@@ -119,6 +129,19 @@
             opacity: 0.8;
             transform: scale(0.98);
         }
+        .undo {
+            background: #444444;
+            color: var(--text);
+            padding: 12px;
+            font-size: 0.9rem;
+            border-radius: 2px;
+            margin: 20px auto;
+            display: block;
+        }
+        button:active {
+            opacity: 0.8;
+            transform: scale(0.98);
+        }
     </style>
 
     <div class="header" id="stats">Loading stats...</div>
@@ -132,7 +155,10 @@
             <button class="button-reject" onclick="submit_decision('reject')">Reject</button>
             <button class="button-accept" onclick="submit_decision('accept')">Accept</button>
         </div>
-        <button class="backup" onclick="create_backup()">Create Backup</button>
+        <div class="meta">
+            <button class="undo" onclick="undo()">Undo</button>
+            <button class="backup" onclick="create_backup()">Create Backup</button>
+        </div>
     </div>
     <script>
         let current_word = "";
@@ -172,6 +198,25 @@
                 body: JSON.stringify({ word: current_word, action: decision })
             });
             // Load the next word card after submitting the decision
+            await load_word_card();
+        }
+
+        async function undo() {
+            const undo_result = await fetch("/api/undo", {
+                method: "GET"
+            });
+            console.log("undo result:");
+            console.log(undo_result);
+            const undo_data = await undo_result.json();
+            console.log("undo result json data:");
+            console.log(undo_data)          
+            if (undo_data.success) {
+                alert("Undid action.")
+            } else {
+                alert("Failed to undo action.");
+            }
+
+            // Need to re-load a word card now
             await load_word_card();
         }
 
