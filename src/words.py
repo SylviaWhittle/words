@@ -124,7 +124,7 @@ class WordSifter:
 
     def __init__(
         self,
-        word_type: Literal["nouns", "adjectives", "verbs"],
+        word_type: Literal["nouns", "adjectives", "verbs", "names"],
         file_sort_type: Literal["alphabetical", "length"],
         data_dir: Path,
         backup_dir: Path,
@@ -155,18 +155,22 @@ class WordSifter:
 
     def _ensure_files_exist(self):
         if not self.file_unseen.exists():
-            nltk.download("wordnet")
-            word_type_map = {
-                "nouns": "n",
-                "verbs": "v",
-                "adjectives": "a",
-                "adverbs": "r",
-            }
-            words = {
-                lemma.name()
-                for synset in wn.all_synsets(word_type_map[self.word_type])
-                for lemma in synset.lemmas()
-            }
+            if self.word_type == "names":
+                nltk.download("names")
+                words = nltk.corpus.names.words
+            else:
+                nltk.download("wordnet")
+                word_type_map = {
+                    "nouns": "n",
+                    "verbs": "v",
+                    "adjectives": "a",
+                    "adverbs": "r",
+                }
+                words = {
+                    lemma.name()
+                    for synset in wn.all_synsets(word_type_map[self.word_type])
+                    for lemma in synset.lemmas()
+                }
             self.file_unseen.write_text("\n".join(sorted(words)) + "\n")
             self.file_accepted.touch()
             self.file_rejected.touch()
